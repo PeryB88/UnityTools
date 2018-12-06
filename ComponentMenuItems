@@ -1,0 +1,228 @@
+//=============================================================================================================================//
+//
+//	Copyright: Pericles Barros
+//  Created on: 2018/12/5 18:42:39
+//
+//=============================================================================================================================//
+
+
+#region Usings
+
+using System.Linq;
+using UnityEditor;
+using UnityEditorInternal;
+using UnityEngine;
+
+#endregion
+
+namespace GameSystems.AssetMenuItems
+{
+    public static class ComponentMenuItems
+    {
+        //=====================================================================================================================//
+        //=================================================== private Fields ==================================================//
+        //=====================================================================================================================//
+
+        #region Private Fields
+
+        private static Vector3 _position;
+        private static Quaternion _rotation;
+        private static Vector3 _scale;
+
+        private static bool _hasCopiedPosition;
+        private static bool _hasCopiedRotation;
+        private static bool _hasCopiedScale;
+        private static bool _hasCopiedTransform;
+
+        // % (ctrl), # (shift), & (alt)
+
+        private static GameObject _source;
+
+        #endregion
+
+        //=====================================================================================================================//
+        //=================================================== Public Methods ==================================================//
+        //=====================================================================================================================//
+
+        #region Public Methods
+
+        //=================================================== Copy Transform ==================================================//
+
+        #region Copy Transform Methods
+
+        [MenuItem("GameObject/Copy/Position %#w", false, -2)]
+        public static void CopyPosition()
+        {
+            _hasCopiedPosition = true;
+            _position = Selection.activeGameObject.transform.position;
+        }
+
+        [MenuItem("GameObject/Copy/Rotation %#e", false, -2)]
+        public static void CopyRotation()
+        {
+            _hasCopiedRotation = true;
+            _rotation = Selection.activeGameObject.transform.rotation;
+        }
+
+        [MenuItem("GameObject/Copy/Scale %#r", false, -2)]
+        public static void CopyScale()
+        {
+            _hasCopiedScale = true;
+            _scale = Selection.activeGameObject.transform.localScale;
+        }
+
+        [MenuItem("GameObject/Copy/Transform %#t", false, -2)]
+        public static void CopyTransform()
+        {
+            _hasCopiedPosition = _hasCopiedRotation = _hasCopiedScale = _hasCopiedTransform = true;
+            _position = Selection.activeGameObject.transform.position;
+            _rotation = Selection.activeGameObject.transform.rotation;
+            _scale = Selection.activeGameObject.transform.localScale;
+        }
+
+        [MenuItem("GameObject/Copy/Position  %#w", true, -2)]
+        [MenuItem("GameObject/Copy/Rotation  %#e", true, -2)]
+        [MenuItem("GameObject/Copy/Scale  %#r", true, -2)]
+        [MenuItem("GameObject/Copy/Transform  %#t", true, -2)]
+        public static bool ValidateCopyTransform()
+        {
+            return (Selection.gameObjects.Length == 1 && Selection.gameObjects[0] != null && !AssetDatabase.Contains(Selection.gameObjects[0]));
+        }
+
+        #endregion Copy Transform Methods
+
+        //================================================== Paste Transform ==================================================//
+
+        #region Paste Transform Methods
+
+        [MenuItem("GameObject/Paste/Position %&w", false, -1)]
+        public static void PastePosition()
+        {
+            var selection = Selection.gameObjects;
+            foreach (var gameObject in selection) {
+                Undo.RegisterCompleteObjectUndo(gameObject, "Set Position");
+                gameObject.transform.position = _position;
+            }
+        }
+
+        [MenuItem("GameObject/Paste/Rotation %&e", false, -1)]
+        public static void PasteRotation()
+        {
+            var selection = Selection.gameObjects;
+            foreach (var gameObject in selection) {
+                Undo.RegisterCompleteObjectUndo(gameObject, "Set Rotation");
+                gameObject.transform.rotation = _rotation;
+            }
+        }
+
+        [MenuItem("GameObject/Paste/Scale %&r", false, -1)]
+        public static void PasteScale()
+        {
+            var selection = Selection.gameObjects;
+            foreach (var gameObject in selection) {
+                Undo.RegisterCompleteObjectUndo(gameObject, "Set Scale");
+                gameObject.transform.localScale = _scale;
+            }
+        }
+
+        [MenuItem("GameObject/Paste/Transform %&t", false, -1)]
+        public static void PasteTransform()
+        {
+            var selection = Selection.gameObjects;
+            foreach (var gameObject in selection) {
+                Undo.RegisterCompleteObjectUndo(gameObject, "Set Transform");
+                gameObject.transform.SetPositionAndRotation(_position, _rotation);
+                gameObject.transform.localScale = _scale;
+            }
+        }
+
+        [MenuItem("GameObject/Paste/Position %&w", true, -1)]
+        public static bool ValidatePastePosition()
+        {
+            if (Selection.gameObjects.Length == 0 || !_hasCopiedPosition)
+                return false;
+
+            return Selection.gameObjects.All(gameObject => gameObject != null && !AssetDatabase.Contains(gameObject));
+        }
+
+        [MenuItem("GameObject/Paste/Rotation %&e", true, -1)]
+        public static bool ValidatePasteRotation()
+        {
+            if (Selection.gameObjects.Length == 0 || !_hasCopiedRotation)
+                return false;
+
+            return Selection.gameObjects.All(gameObject => gameObject != null && !AssetDatabase.Contains(gameObject));
+        }
+
+        [MenuItem("GameObject/Paste/Scale %&r", true, -1)]
+        public static bool ValidatePasteScale()
+        {
+            if (Selection.gameObjects.Length == 0 || !_hasCopiedScale)
+                return false;
+
+            return Selection.gameObjects.All(gameObject => gameObject != null && !AssetDatabase.Contains(gameObject));
+        }
+
+        [MenuItem("GameObject/Paste/Transform %&t", true, -1)]
+        public static bool ValidatePasteTransform()
+        {
+            if (Selection.gameObjects.Length == 0 || !_hasCopiedTransform)
+                return false;
+
+            return Selection.gameObjects.All(gameObject => gameObject != null && !AssetDatabase.Contains(gameObject));
+        }
+
+        #endregion Paste Transform Methods
+
+        //=============================================== Copy/Paste Components ===============================================//
+
+        #region Component Methods
+
+        [MenuItem("GameObject/Copy/Components %#q", false, 0)]
+        public static void CopyComponents()
+        {
+            _source = Selection.gameObjects[0];
+        }
+
+        [MenuItem("GameObject/Copy/Components %#q", true, -1)]
+        public static bool ValidateCopyComponents()
+        {
+            return Selection.gameObjects.Length == 1 && Selection.gameObjects[0] != null && !AssetDatabase.Contains(Selection.gameObjects[0]);
+        }
+
+        [MenuItem("GameObject/Paste/Components %&q", false, 0)]
+        public static void PasteComponents()
+        {
+            var target = Selection.gameObjects[0];
+            if (_source == null || target == null)
+                return;
+
+            var sourceComps = _source.GetComponents<Component>();
+            
+            foreach (var component in sourceComps) {
+                var targetComp = target.GetComponent(component.GetType());
+                if (!ComponentUtility.CopyComponent(component)) 
+                    continue;
+                
+                if (targetComp == null) {
+                    Undo.RecordObject(target, $"Paste Component<{component.GetType().Name}>");
+                    ComponentUtility.PasteComponentAsNew(target);
+                } else {
+                    Undo.RecordObject(target, $"Paste Component Values<{component.GetType().Name}>");
+                    ComponentUtility.PasteComponentValues(targetComp);
+                }
+            }
+
+        }
+
+        [MenuItem("GameObject/Paste/Components %&q", true, -1)]
+        public static bool ValidatePasteComponents()
+        {
+            return Selection.activeGameObject != null && !AssetDatabase.Contains(Selection.activeGameObject) && _source != null;
+        }
+
+        #endregion Component Methods
+
+        #endregion
+    }
+}
